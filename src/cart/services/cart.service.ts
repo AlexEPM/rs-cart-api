@@ -1,55 +1,134 @@
-import { Injectable } from '@nestjs/common';
+import {Injectable} from '@nestjs/common';
 
-import { v4 } from 'uuid';
+import {Cart, CartItem, Product} from '../models';
+import {InjectConnection, InjectRepository} from '@nestjs/typeorm';
+import {Connection, Repository} from 'typeorm';
+import {CartEntity, STATUS} from '../../database/entities/cart.entity';
+import {CartItemEntity} from '../../database/entities/cart-item.entity'
 
-import { Cart } from '../models';
+export const cartItemEntityToCartItem = (entity: CartItemEntity): CartItem => {
+  return {
+    product: {
+      id: entity.product_id,
+      ...({} as Product)
+    },
+    count: entity.count
+  }
+};
+
+const cartToCartItemEntity = (id: string, item: CartItem): Omit<CartItemEntity, 'id'> => {
+  return {
+    cart_id: id,
+    product_id: item.product.id,
+    count: item.count
+  };
+};
+
+const cartEntityToCart = ({ id, items }: CartEntity): Cart => {
+  const cartItems = items.map(cartItemEntityToCartItem);
+
+  return {
+    id,
+    items: cartItems
+  };
+};
 
 @Injectable()
 export class CartService {
-  private userCarts: Record<string, Cart> = {};
+  constructor(
+      @InjectRepository(CartEntity)
+      private readonly cartRepo: Repository<CartEntity>,
 
-  findByUserId(userId: string): Cart {
-    return this.userCarts[ userId ];
-  }
+      @InjectRepository(CartItemEntity)
+      private readonly cartItemsRepo: Repository<CartItemEntity>,
 
-  createByUserId(userId: string) {
-    const id = v4(v4());
-    const userCart = {
-      id,
-      items: [],
-    };
+      @InjectConnection() private readonly connection: Connection,
+  ) {}
 
-    this.userCarts[ userId ] = userCart;
+  async findByUserId(userId: string): Promise<Cart> {
+    try {
+      const cartEntity = await this.cartRepo.findOne({
+        where: {
+          user_id: userId,
+        },
+        relations: {
+          items: true,
+        },
+      });
 
-    return userCart;
-  }
+      console.log('CART_ENTITY = ', cartEntity);
 
-  findOrCreateByUserId(userId: string): Cart {
-    const userCart = this.findByUserId(userId);
+      if (!cartEntity) {
+        return null;
+      }
 
-    if (userCart) {
-      return userCart;
+      return cartEntityToCart(cartEntity);
+    } catch (e) {
+      console.log(e);
     }
-
-    return this.createByUserId(userId);
   }
 
-  updateByUserId(userId: string, { items }: Cart): Cart {
-    const { id, ...rest } = this.findOrCreateByUserId(userId);
+  async createByUserId(userId: string): Promise<Cart> {
+    try {
+      const currentDate = new Date();
 
-    const updatedCart = {
-      id,
-      ...rest,
-      items: [ ...items ],
+      const insertResult = await this.cartRepo.insert({
+        user_id: userId,
+        created_at: currentDate,
+        updated_at: currentDate,
+        status: STATUS.OPEN
+      });
+
+      return {
+        id: insertResult.identifiers[0].id,
+        items: []
+      };
+    } catch (e) {
+      console.log(e);
     }
-
-    this.userCarts[ userId ] = { ...updatedCart };
-
-    return { ...updatedCart };
   }
 
-  removeByUserId(userId): void {
-    this.userCarts[ userId ] = null;
+  async findOrCreateByUserId(userId: string): Promise<Cart> {
+    try {
+      const cart = await this.findByUserId(userId);
+
+      if (cart) {
+        return cart;
+      }
+
+      return await this.createByUserId(userId);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  async updateByUserId(userId: string, { items }: Cart): Promise<Cart> {
+    try {
+      const cartEntity = await this.cartRepo.findOneBy(
+          { user_id: userId }
+      );
+      const cartForUpdate = {
+        ...cartEntity,
+        items: items.map(
+            (item) => cartToCartItemEntity(cartEntity.id, item))
+      };
+
+      const updatedCart = await this.cartRepo.save(
+        cartForUpdate
+      );
+
+      return cartEntityToCart(updatedCart);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  async removeByUserId(userId): Promise<void> {
+    try {
+      await this.cartRepo.delete({ user_id: userId });
+    } catch (e) {
+      console.log(e);
+    }
   }
 
 }
