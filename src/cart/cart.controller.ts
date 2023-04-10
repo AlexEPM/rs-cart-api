@@ -31,7 +31,14 @@ export class CartController {
   // @UseGuards(BasicAuthGuard)
   @Put()
   async updateUserCart(@Body() body) { // TODO: validate body payload...
-    const cart = await this.cartService.updateByUserId(body.userId, body.cart)
+    const cart = await this.cartService.updateByUserId(body.userId, body.cart);
+
+    if (!cart) {
+      return {
+        statusCode: HttpStatus.NOT_MODIFIED,
+        message: 'Cart has not been updated',
+      }
+    }
 
     return {
       statusCode: HttpStatus.OK,
@@ -73,14 +80,25 @@ export class CartController {
 
     const { id: cartId, items } = cart;
     const total = calculateCartTotal(cart);
-    const order = this.orderService.create({
+    const order = await this.orderService.create({
       ...body, // TODO: validate and pick only necessary data
       userId: body.userId,
       cartId,
       items,
       total,
     });
-    await this.cartService.removeByUserId(body.userId);
+
+    if (!order) {
+      const statusCode = HttpStatus.NOT_MODIFIED;
+      req.statusCode = statusCode
+
+      return {
+        statusCode: statusCode,
+        message: 'Order has not been updated'
+      }
+    }
+
+    await this.cartService.softDeleteByUserId(body.userId);
 
     return {
       statusCode: HttpStatus.OK,

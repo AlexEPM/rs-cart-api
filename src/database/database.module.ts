@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { CartEntity } from './entities/cart.entity';
 import { CartItemEntity } from './entities/cart-item.entity';
+import {OrderEntity} from "./entities/order.entity";
 
 @Module({
     imports: [
@@ -26,7 +27,7 @@ import { CartItemEntity } from './entities/cart-item.entity';
              */
             namingStrategy: new SnakeNamingStrategy(),
         }),
-        TypeOrmModule.forFeature([CartEntity, CartItemEntity]),
+        TypeOrmModule.forFeature([CartEntity, CartItemEntity, OrderEntity]),
     ],
     exports: [TypeOrmModule],
 })

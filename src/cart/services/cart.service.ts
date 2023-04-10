@@ -16,7 +16,7 @@ export const cartItemEntityToCartItem = (entity: CartItemEntity): CartItem => {
   }
 };
 
-const cartToCartItemEntity = (id: string, item: CartItem): Omit<CartItemEntity, 'id'> => {
+export const cartItemToCartItemEntity = (id: string, item: CartItem): Omit<CartItemEntity, 'id'> => {
   return {
     cart_id: id,
     product_id: item.product.id,
@@ -39,9 +39,6 @@ export class CartService {
       @InjectRepository(CartEntity)
       private readonly cartRepo: Repository<CartEntity>,
 
-      @InjectRepository(CartItemEntity)
-      private readonly cartItemsRepo: Repository<CartItemEntity>,
-
       @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -55,8 +52,6 @@ export class CartService {
           items: true,
         },
       });
-
-      console.log('CART_ENTITY = ', cartEntity);
 
       if (!cartEntity) {
         return null;
@@ -110,12 +105,10 @@ export class CartService {
       const cartForUpdate = {
         ...cartEntity,
         items: items.map(
-            (item) => cartToCartItemEntity(cartEntity.id, item))
+            (item) => cartItemToCartItemEntity(cartEntity.id, item))
       };
 
-      const updatedCart = await this.cartRepo.save(
-        cartForUpdate
-      );
+      const updatedCart = await this.cartRepo.save(cartForUpdate);
 
       return cartEntityToCart(updatedCart);
     } catch (e) {
@@ -128,6 +121,14 @@ export class CartService {
       await this.cartRepo.delete({ user_id: userId });
     } catch (e) {
       console.log(e);
+    }
+  }
+
+  async softDeleteByUserId(userId: string): Promise<void> {
+    const userCart = await this.findByUserId(userId);
+
+    if (userCart) {
+      await this.cartRepo.update({ id: userCart.id}, { status: STATUS.ORDERED})
     }
   }
 
