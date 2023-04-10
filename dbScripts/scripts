@@ -1,0 +1,57 @@
+CREATE TYPE STATUS AS ENUM ('OPEN', 'ORDERED');
+
+CREATE TABLE carts (
+	id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id uuid NOT NULL,
+    created_at date NOT NULL,
+    updated_at date NOT NULL,
+    status STATUS
+);
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+SELECT * FROM carts;
+
+/*-----------------------------------*/
+
+CREATE TABLE cart_items (
+	id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+	cart_id uuid REFERENCES carts(id),
+	product_id uuid,
+	count int
+);
+
+SELECT * FROM cart_items;
+
+/*-------------------------------------*/
+
+INSERT INTO carts (user_id, created_at, updated_at, status)
+VALUES ('db971550-a649-4276-b84e-e92468255ab1', '2023-03-28', '2023-03-28', 'OPEN'),
+		('fc14dedd-0257-4b28-bc36-f2145250bc62', '2023-03-29', '2023-03-31', 'OPEN'),
+		('20b3675e-5a42-4b3e-9d18-3264015b35f5', '2023-04-01', '2023-04-01', 'OPEN');
+
+
+/*-------------------------------------------------*/
+
+INSERT INTO cart_items (cart_id, product_id, count)
+SELECT id, 'c36ad02b-cb9b-4463-9047-54fbe0d65483', 7
+FROM carts WHERE user_id='db971550-a649-4276-b84e-e92468255ab1';
+
+INSERT INTO cart_items (cart_id, product_id, count)
+SELECT id, '265c9d08-5bc7-4626-b36e-5caf2f8a1d79', 20
+FROM carts WHERE user_id='db971550-a649-4276-b84e-e92468255ab1';
+
+INSERT INTO cart_items (cart_id, product_id, count)
+SELECT id, 'e67e5bc5-5bb1-43d5-ac3c-d359311787f4', 11
+FROM carts WHERE user_id='db971550-a649-4276-b84e-e92468255ab1';
+
+INSERT INTO cart_items (cart_id, product_id, count)
+SELECT id, '20b3675e-5a42-4b3e-9d18-3264015b35f5', 5
+FROM carts WHERE user_id='db971550-a649-4276-b84e-e92468255ab1';
+
+/*---------------------------------------*/
+
+DROP TABLE carts, cart_items;
+
+SELECT * FROM carts;
+SELECT * FROM cart_items;
