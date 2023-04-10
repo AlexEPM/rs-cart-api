@@ -8,9 +8,6 @@ import {CartItemEntity} from '../../database/entities/cart-item.entity';
 import {cartItemEntityToCartItem, cartItemToCartItemEntity} from '../../cart';
 
 const orderEntityToOrder = (entity: OrderEntity): Order => {
-  console.log('entity.payment = ', entity.payment);
-  console.log('entity.delivery = ', entity.delivery);
-
   const payment = JSON.parse(JSON.stringify(entity.payment));
   const delivery = JSON.parse(JSON.stringify(entity.delivery));
 
